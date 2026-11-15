@@ -8,8 +8,8 @@ if(MSVC)
 endif()
 
 # Runtime is an engine-family library, not part of zcsr core.
-# Point these at the real repos; defaults match the current workspace worktree.
-set(ZCSR_ENGINE_DIR "C:/Users/chen/Documents/GitHub/_worktrees/zcsr-ownership-closure" CACHE PATH "zcsr engine repo")
+# Point these at the real repos; defaults use the merged engine main worktree.
+set(ZCSR_ENGINE_DIR "C:/Users/chen/Documents/GitHub/_worktrees/zcsr-main" CACHE PATH "zcsr engine repo (merged main)")
 set(ZCSR_UIM_DIR "C:/Users/chen/Documents/GitHub/UIM" CACHE PATH "UIM repo")
 
 add_subdirectory(${ZCSR_ENGINE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/zcsr_engine")
