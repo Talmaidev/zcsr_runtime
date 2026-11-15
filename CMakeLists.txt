@@ -8,8 +8,8 @@ if(MSVC)
 endif()
 
 # Runtime is an engine-family library, not part of zcsr core.
-# Point these at the real repos; defaults use the merged engine main worktree.
-set(ZCSR_ENGINE_DIR "C:/Users/chen/Documents/GitHub/_worktrees/zcsr-main" CACHE PATH "zcsr engine repo (merged main)")
+# Point these at the real repos; defaults use the engine repo root.
+set(ZCSR_ENGINE_DIR "C:/Users/chen/Documents/GitHub/zero-coupling-signal-router" CACHE PATH "zcsr engine repo")
 set(ZCSR_UIM_DIR "C:/Users/chen/Documents/GitHub/UIM" CACHE PATH "UIM repo")
 
 enable_testing()
