@@ -12,6 +12,7 @@ endif()
 set(ZCSR_ENGINE_DIR "C:/Users/chen/Documents/GitHub/_worktrees/zcsr-main" CACHE PATH "zcsr engine repo (merged main)")
 set(ZCSR_UIM_DIR "C:/Users/chen/Documents/GitHub/UIM" CACHE PATH "UIM repo")
 
+enable_testing()
 add_subdirectory(${ZCSR_ENGINE_DIR} "${CMAKE_CURRENT_BINARY_DIR}/zcsr_engine")
 add_subdirectory(${ZCSR_UIM_DIR} "${CMAKE_CURRENT_BINARY_DIR}/zcsr_uim")
 
