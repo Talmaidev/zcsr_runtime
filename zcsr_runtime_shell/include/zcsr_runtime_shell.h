@@ -1,31 +1,25 @@
 #ifndef ZCSR_RUNTIME_SHELL_H
 #define ZCSR_RUNTIME_SHELL_H
-/* integration/window.h — 独立 window 骨架 (shell) 的挂载接口.
+/* zcsr_runtime_shell.h — single OS-window / main-loop owner.
  *
- * window.c owns the WHOLE app lifecycle: a normal OS window (taskbar icon,
- * Alt-Tab switchable, never topmost), a black home screen with categorized
- * main-menu buttons (Delta Force style: one big button per registered test
- * module, plus the built-in SETTINGS and EXIT), the complete settings panel
- * as an overlay (Video / Graphics / Audio — real window management), and the
- * single main loop. This header is the plug-in point; a standard contract id
- * under include/zcsr will be defined later, at which point this file moves.
- *
- * Usage (see testmain.c):
- *   static const zcsr_runtime_shell_module mods[] = { {...light module...} };
- *   return zcsr_runtime_shell_run(mods, 1, argc, argv);
+ * window ownership belongs here, never to a module. A single module is the
+ * application itself (editor/player): its title becomes the OS window title and
+ * the shell enters it directly. Multiple modules use the neutral home screen
+ * with one button per module plus built-in SETTINGS and EXIT.
  */
 #include "zcsr/gl_render.h"
-#include "zcsr_ui_page_manager/ui_game_settings.h"
+#include "zcsr/input.h"
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* 用与运行时 shell 完全相同的一份设置页数据（Video/Graphics/Audio/Interface）
- * 建一个独立实例，供编辑器内嵌显示、逐控件改位置。
- * buf 至少 8192 字节（与运行时同一份），返回 NULL 表示配置无效。 */
-zcsr_game_settings* zcsr_runtime_shell_settings_create(void* buf, size_t bytes,
-                                               int x, int y, int w, int h);
+/* Optional settings/page-manager ownership:
+ * zcsr_runtime_shell does not own page content. If
+ * ZCSR_RUNTIME_WITH_SETTINGS_PAGE is enabled, the shell may link the UIM
+ * page manager and expose a settings overlay; otherwise the shell has no
+ * page-manager dependency and the SETTINGS entry is absent. */
 
 /* One pluggable test module = one big button on the home screen.
  * All callbacks may be NULL except frame. r is the shared renderer; cw/ch are
@@ -37,6 +31,17 @@ typedef struct zcsr_runtime_shell_module {
     void (*shutdown)(zcsr_gl_renderer* r, void* user);              /* at app exit */
     void (*frame)(zcsr_gl_renderer* r, int cw, int ch, void* user); /* one frame */
     bool (*key)(int key, void* user);                /* key press; true = consumed */
+    /* Optional pointer callback. pressed/released are this-frame button edges;
+     * buttons is the current mask. Called only while this module is active. */
+    void (*pointer)(int x, int y, uint32_t buttons, uint32_t pressed,
+                    uint32_t released, void* user);
+    /* Optional UTF-8 text produced by WM_CHAR/WM_IME_CHAR since the previous
+     * frame. Editor chrome uses this for Inspector/text fields; player modules
+     * may ignore it. */
+    void (*text)(const char* utf8, void* user);
+    /* Optional close veto: false keeps the window open (e.g. unsaved edits).
+     * Called before the shell consumes the OS close request. */
+    bool (*close_request)(void* user);
 } zcsr_runtime_shell_module;
 
 /* Boots window/renderer/inputs/settings, runs the single main loop until the
@@ -45,21 +50,40 @@ typedef struct zcsr_runtime_shell_module {
 int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_count,
                      int argc, char** argv);
 
+/* Canonical game/player host entry. It is the same single OS-window and
+ * main-loop owner as zcsr_runtime_shell_run, named at the Runtime boundary so
+ * game, player and editor-Play all enter through one host contract. It does
+ * not create a second window or a second loop. */
+int zcsr_window_game_run(const zcsr_runtime_shell_module* modules, int module_count,
+                         int argc, char** argv);
+
 /* 外部设置鼠标位置（Editor Runtime 用 input_ext 更新后传给模块） */
 void zcsr_runtime_shell_set_mouse_position(int x, int y);
 
 /* 获取当前鼠标位置（模块用） */
 void zcsr_runtime_shell_get_mouse_position(int* x, int* y);
 
+/* 模块共享 shell 自己的窗口/渲染器，不再另建第二套 OS window。
+ * surface 只在 shell 运行期间有效；module init/frame/shutdown 内可读。 */
+zcsr_surface* zcsr_runtime_shell_surface(void);
+
+/* Runtime-owned worker pool. Valid only while zcsr_runtime_shell_run is active;
+ * modules may submit background work. NULL when the pool could not be created. */
+typedef struct zcsr_task_scheduler zcsr_task_scheduler;
+zcsr_task_scheduler* zcsr_runtime_shell_tasks(void);
+
+/* 模块读取 shell 已泵过的键盘状态（Ctrl/Shift 等），不另建 input pump。 */
+bool zcsr_runtime_shell_key_down(zcsr_keycode key);
+
+/* 模块消费本帧滚轮增量；读取后清零，保证一个 tick 只结算一次。 */
+int zcsr_runtime_shell_take_wheel_delta(void);
+
+/* 模块请求退出应用（例如 File→Exit）。仍然由 shell 收尾、销毁窗口与模块；
+ * 调用前模块自己负责未保存确认。 */
+void zcsr_runtime_shell_request_exit(void);
+
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* ZCSR_RUNTIME_SHELL_H */
-
-/* 设置页 -> 模块落点（Graphics / Default FOV）。模块未 init 时返回 false。 */
-bool  zcsr_light2d_module_set_render_options(int shadows, int light_scale_pct,
-                                             int bloom, int ray_shadows);
-bool  zcsr_light2d_module_set_fov_deg(float fov_deg);
-float zcsr_light2d_module_get_pitch_deg(void);
-bool  zcsr_light2d_module_set_scene(int effects, float view_distance);

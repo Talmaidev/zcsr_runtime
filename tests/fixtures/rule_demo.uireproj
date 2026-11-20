@@ -1,0 +1,25 @@
+UIRJ 3
+name "rule_demo"
+entry "main"
+page 5 "main"
+node "screen" "" 0 0 0 960 600 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 - 0
+node "bg" "screen" 0 0 0 960 600 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 - 1
+comp 65537 1 1 1
+prop 3 int 538976511
+node "attacker" "bg" 0 496 208 120 60 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 - 2
+comp 65537 1 2 1
+prop 3 int 4294919236
+comp 65549 1 3 4
+prop 11 int 0
+prop 12 int 0
+prop 13 int 0
+prop 14 int 5
+node "target" "bg" 0 140 209 120 60 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 - 2
+comp 65537 1 4 1
+prop 3 int 4282664191
+comp 65548 1 5 1
+prop 10 int 3
+node "hint" "bg" 0 30 20 720 40 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 1 1 0 0 0 - 1
+comp 65542 1 6 2
+prop 1 string "Click the RED panel: same-row BLUE target has 3 HP, Rule deals 5."
+prop 2 int 4294967295
