@@ -305,6 +305,11 @@ bool zcsr_runtime_shell_key_down(zcsr_keycode key) {
     return zcsr_input_is_down(w_input, key);
 }
 
+bool zcsr_runtime_shell_inject_key(zcsr_keycode key, zcsr_key_action action) {
+    if (!w_input) return false;
+    return zcsr_input_inject_key(w_input, key, action);
+}
+
 int zcsr_runtime_shell_take_wheel_delta(void) {
     int delta = g_runtime_shell_wheel;
     g_runtime_shell_wheel = 0;
@@ -368,6 +373,9 @@ zcsr_task_scheduler* zcsr_runtime_shell_tasks(void) {
 
 static int  w_active_module = -1;   /* -1 = home screen */
 static bool w_settings_open = false;
+#if defined(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
+static zcsr_keycode w_settings_last_key = ZCSR_KEY_NONE; /* test observation only */
+#endif
 static int  w_cw = SHELL_W, w_ch = SHELL_H;
 static unsigned char w_prev_mouse_buttons = 0;
 static bool w_autoquit = false;
@@ -546,6 +554,28 @@ static void close_settings(bool apply) {
     }
     w_settings_open = false;
     zcsr_log_write(ZCSR_LOG_INFO, "shell", "[shell] settings closed (%s)\n", apply ? "applied" : "cancelled");
+}
+
+bool zcsr_runtime_shell_test_settings_open(void) {
+    return w_settings_open;
+}
+
+int zcsr_runtime_shell_test_settings_tab(void) {
+    return w_settings ? zcsr_game_settings_active_tab(w_settings) : -1;
+}
+
+int zcsr_runtime_shell_test_settings_last_key(void) {
+    return (int)w_settings_last_key;
+}
+
+int zcsr_runtime_shell_test_settings_video_value(int index) {
+    if (index < 0 || index >= V_COUNT) return -1;
+    return g_video[index].value;
+}
+
+void zcsr_runtime_shell_test_settings_set_video_value(int index, int value) {
+    if (index < 0 || index >= V_COUNT) return;
+    g_video[index].value = value;
 }
 #endif /* ZCSR_RUNTIME_WITH_SETTINGS_PAGE: apply/open/close */
 
@@ -960,6 +990,7 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
             if (ev.action != ZCSR_KEY_DOWN || ev.text) continue;
 #if defined(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
             if (w_settings_open) {
+                w_settings_last_key = ev.key; /* test observation: shell routed it */
                 if (ev.key == ZCSR_KEY_R) { reset_defaults(); continue; }
                 {
                     int result = zcsr_game_settings_handle_key(w_settings, ev.key, ev.action);

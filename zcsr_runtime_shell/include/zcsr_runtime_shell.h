@@ -75,6 +75,22 @@ zcsr_task_scheduler* zcsr_runtime_shell_tasks(void);
 /* 模块读取 shell 已泵过的键盘状态（Ctrl/Shift 等），不另建 input pump。 */
 bool zcsr_runtime_shell_key_down(zcsr_keycode key);
 
+/* Test/tool hook: queue one physical key event into the shell's single input
+ * ring. It is processed by the normal keyboard routing on the next frame; no
+ * second loop or second window is created. Platform backends must use the
+ * normal pump, not this entry point. */
+bool zcsr_runtime_shell_inject_key(zcsr_keycode key, zcsr_key_action action);
+
+#if defined(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
+/* Read-only test hooks for the settings overlay. They expose no second UIM
+ * state; they read the shell-owned settings instance built for the overlay. */
+bool zcsr_runtime_shell_test_settings_open(void);
+int  zcsr_runtime_shell_test_settings_tab(void);
+int  zcsr_runtime_shell_test_settings_last_key(void);
+int  zcsr_runtime_shell_test_settings_video_value(int index);
+void zcsr_runtime_shell_test_settings_set_video_value(int index, int value);
+#endif
+
 /* 模块消费本帧滚轮增量；读取后清零，保证一个 tick 只结算一次。 */
 int zcsr_runtime_shell_take_wheel_delta(void);
 

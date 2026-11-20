@@ -45,6 +45,35 @@ target_link_libraries(zcsr_runtime_shell_autoquit_test PRIVATE zcsr_runtime_shel
 add_test(NAME zcsr_runtime_shell_autoquit COMMAND zcsr_runtime_shell_autoquit_test)
 set_tests_properties(zcsr_runtime_shell_autoquit PROPERTIES TIMEOUT 30)
 
+if(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
+  # Shell-level settings keyboard routing: S/R/Esc/Tab/arrows are queued into
+  # the shell's zcsr_input ring, not passed directly to the page handler.
+  add_executable(zcsr_runtime_shell_settings_keys_test tests/test_runtime_shell_settings_keys.c)
+  target_compile_definitions(zcsr_runtime_shell_settings_keys_test PRIVATE
+      ZCSR_RUNTIME_WITH_SETTINGS_PAGE=1)
+  target_link_libraries(zcsr_runtime_shell_settings_keys_test PRIVATE zcsr_runtime_shell)
+  add_test(NAME zcsr_runtime_shell_settings_keys COMMAND zcsr_runtime_shell_settings_keys_test)
+  set_tests_properties(zcsr_runtime_shell_settings_keys PROPERTIES TIMEOUT 30)
+endif()
+
+# The 2.5D integration slice used to be source-only in the engine repository.
+# Build it here through the canonical runtime host so it is compiled and run,
+# not just text-checked. It uses the same zcsr_window_game_run window/loop.
+if(EXISTS "${ZCSR_ENGINE_DIR}/integration/testmain.c")
+  add_executable(zcsr_light2d_integration_slice
+      "${ZCSR_ENGINE_DIR}/integration/testmain.c")
+  target_include_directories(zcsr_light2d_integration_slice PRIVATE
+      ${ZCSR_ENGINE_DIR}/include
+      ${ZCSR_ENGINE_DIR}/third_party/glad/include)
+  target_link_libraries(zcsr_light2d_integration_slice PRIVATE
+      zcsr_runtime_shell zcsr_light2d zcsr_sprite zcsr_camera zcsr_glrender)
+  add_test(NAME zcsr_light2d_integration_slice
+           COMMAND zcsr_light2d_integration_slice autoquit)
+  set_tests_properties(zcsr_light2d_integration_slice PROPERTIES
+      TIMEOUT 30
+      PASS_REGULAR_EXPRESSION "all PASS")
+endif()
+
 if(ZCSR_RUNTIME_BUILD_PLAYER)
   add_subdirectory(player)
 endif()
