@@ -24,8 +24,11 @@ if(ZCSR_RUNTIME_BUILD_PLAYER OR ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
     # Page manager is only built when this runtime explicitly opts into the
     # settings page. Runtime's default configuration has no page manager source
     # in its build graph at all unless a parent build requested it.
-    if(NOT DEFINED ZCSR_UIM_WITH_PAGE_MANAGER)
-      set(ZCSR_UIM_WITH_PAGE_MANAGER ${ZCSR_RUNTIME_WITH_SETTINGS_PAGE}
+    if(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
+      set(ZCSR_UIM_WITH_PAGE_MANAGER ON
+          CACHE BOOL "Build the optional UIM page manager target" FORCE)
+    elseif(NOT DEFINED ZCSR_UIM_WITH_PAGE_MANAGER)
+      set(ZCSR_UIM_WITH_PAGE_MANAGER OFF
           CACHE BOOL "Build the optional UIM page manager target" FORCE)
     endif()
     add_subdirectory(${ZCSR_UIM_DIR} "${CMAKE_CURRENT_BINARY_DIR}/zcsr_uim")
