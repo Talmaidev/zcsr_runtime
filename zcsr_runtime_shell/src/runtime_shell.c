@@ -929,12 +929,6 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
                                                   pressed, released,
                                                   w_modules[w_active_module].user);
             }
-            if (w_active_module >= 0 && !w_settings_open &&
-                w_modules[w_active_module].text != NULL) {
-                char text[256];
-                size_t text_n = zcsr_input_ext_take_text(w_inputext, text, sizeof(text));
-                if (text_n) w_modules[w_active_module].text(text, w_modules[w_active_module].user);
-            }
         }
 
         /* ---- mouse routing ---- */
