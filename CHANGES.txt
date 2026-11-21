@@ -1,0 +1,13 @@
+ZCSR Runtime change notes
+2026-11-21
+
+history
+- keep one author line
+- keep source and technical docs
+- no release tag for now
+
+scope
+- runtime
+- player
+- settings
+- tests
