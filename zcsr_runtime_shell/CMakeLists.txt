@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 3.16)
 project(zcsr_runtime_shell LANGUAGES C)
 
+include(GNUInstallDirs)
+
 add_library(zcsr_runtime_shell STATIC src/runtime_shell.c)
 
 option(ZCSR_RUNTIME_WITH_SETTINGS_PAGE
@@ -8,11 +10,11 @@ option(ZCSR_RUNTIME_WITH_SETTINGS_PAGE
        OFF)
 
 target_include_directories(zcsr_runtime_shell PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${ZCSR_ENGINE_DIR}/include
-    ${ZCSR_ENGINE_DIR}/third_party/glad/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../zcsr_frame_loop/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/../zcsr_task_scheduler/include)
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<BUILD_INTERFACE:${ZCSR_ENGINE_DIR}/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../zcsr_frame_loop/include>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../zcsr_task_scheduler/include>
+  $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}>)
 
 target_link_libraries(zcsr_runtime_shell PUBLIC
     zcsr_frame_loop

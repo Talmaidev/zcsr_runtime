@@ -746,6 +746,7 @@ static void panel_tex_ensure(void) {}
 int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_count,
                      int argc, char** argv) {
     int i;
+    int exit_code = 0;
     uint64_t frame_start_ns = zcsr_clock_now_ns();
     const char* shell_title = "zcsr window shell";
 
@@ -851,10 +852,10 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
     zcsr_gl_set_vsync(w_renderer, true);
 
     w_input = zcsr_input_init(input_buf, sizeof(input_buf));
-    if (!w_input) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: no input\n"); goto cleanup; }
+    if (!w_input) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: no input\n"); exit_code = 1; goto cleanup; }
 
     w_inputext = zcsr_input_ext_init(inputext_buf, sizeof(inputext_buf));
-    if (!w_inputext) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: no input_ext\n"); goto cleanup; }
+    if (!w_inputext) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: no input_ext\n"); exit_code = 1; goto cleanup; }
 
     zcsr_surface_get_client_size(w_surface, &w_cw, &w_ch);
     if (w_cw <= 0 || w_ch <= 0) { w_cw = SHELL_W; w_ch = SHELL_H; }
@@ -862,7 +863,7 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
 #if defined(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
     w_settings = zcsr_runtime_shell_settings_create(settings_buf, sizeof(settings_buf),
                                              200, 90, 880, 540);
-    if (!w_settings) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: settings create\n"); goto cleanup; }
+    if (!w_settings) { zcsr_log_write(ZCSR_LOG_ERROR, "shell", "FAIL: settings create\n"); exit_code = 1; goto cleanup; }
 
     /* 编辑器退出编辑态写下的几何覆盖，运行时读回同一个文件 —— 这样"在编辑器里挪过的
      * 按钮"真的出现在游戏里，而不是只留在编辑器会话。文件缺失就保持公式布局。 */
@@ -894,6 +895,26 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
         zcsr_input_pump(w_input, w_surface);
         zcsr_input_ext_pump(w_inputext, w_surface);
         zcsr_surface_pump_events(w_surface);
+        /* Deliver UTF-8 text produced by WM_CHAR/WM_IME_CHAR (or the platform
+         * equivalent) to the active module. Keyboard events carrying text are
+         * deliberately excluded from the key callback path above; without this
+         * drain an editor's text fields never receive typed characters. */
+        {
+            char text[256];
+            size_t text_n = zcsr_input_ext_take_text(w_inputext, text,
+                                                    sizeof text - 1);
+            if (text_n > 0) {
+                text[text_n] = '\0';
+#if defined(ZCSR_RUNTIME_WITH_SETTINGS_PAGE)
+                if (!w_settings_open)
+#endif
+                if (w_active_module >= 0 && w_active_module < w_module_count
+                    && w_modules[w_active_module].text != NULL) {
+                    w_modules[w_active_module].text(text,
+                                                    w_modules[w_active_module].user);
+                }
+            }
+        }
         if (zcsr_window_close_requested(w_surface)) {
             bool allow = true;
             if (w_active_module >= 0 && w_active_module < w_module_count &&
@@ -1123,7 +1144,7 @@ cleanup:
     if (w_renderer) zcsr_gl_destroy(w_renderer);
     if (w_surface) zcsr_surface_destroy(w_surface);
     zcsr_log_write(ZCSR_LOG_INFO, "shell", "=== window shell ended (%d frames) ===\n", w_frame);
-    return 0;
+    return exit_code;
 }
 
 int zcsr_window_game_run(const zcsr_runtime_shell_module* modules, int module_count,

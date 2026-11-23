@@ -50,12 +50,21 @@ typedef struct zcsr_runtime_shell_module {
 int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_count,
                      int argc, char** argv);
 
-/* Canonical game/player host entry. It is the same single OS-window and
- * main-loop owner as zcsr_runtime_shell_run, named at the Runtime boundary so
- * game, player and editor-Play all enter through one host contract. It does
- * not create a second window or a second loop. */
+/* Canonical runtime host entry: one OS window, one surface, one input pump,
+ * one main loop. Game modules, player modules and the editor workspace module
+ * all enter through this function. It does not create a second window or a
+ * second loop.
+ *
+ * Naming note: zcsr_window_game_run is the legacy name. It remains as a
+ * compatibility call; new code uses the canonical name below. */
 int zcsr_window_game_run(const zcsr_runtime_shell_module* modules, int module_count,
                          int argc, char** argv);
+
+static inline int zcsr_runtime_window_run(const zcsr_runtime_shell_module* modules,
+                                          int module_count, int argc, char** argv)
+{
+    return zcsr_window_game_run(modules, module_count, argc, argv);
+}
 
 /* 外部设置鼠标位置（Editor Runtime 用 input_ext 更新后传给模块） */
 void zcsr_runtime_shell_set_mouse_position(int x, int y);

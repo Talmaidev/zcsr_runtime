@@ -1,8 +1,22 @@
-# ZCSR Runtime 1.0
+# ZCSR Runtime
 
-Runtime is the single OS-window/main-loop owner for ZCSR products. It links the
-engine and, when the product needs it, UIM. Modules do not create a second
-window, renderer, or input pump.
+Runtime is the **runtime host**: the single OS-window, surface, input-pump and
+main-loop owner for ZCSR products. It links the engine and, when the product
+needs it, UIM. A runtime module does not create a second window, surface,
+renderer or input pump.
+
+This README uses these words with exactly one meaning:
+
+- **runtime host**: the module that owns the one OS window, one surface, one
+input pump and one main loop.
+- **runtime module**: a unit hosted by the runtime host. The editor is a runtime
+  module; it is not a host.
+- **window**: the one OS window owned by the runtime host.
+- **surface**: the drawable owned by the runtime host.
+- **setting page**: one group of setting rows.
+- **setting page container**: the independent owner of setting page instances.
+  It stores page identity and visibility. It is not a general page stack and it
+  is not a UI document owner.
 
 This README is the usage overview for every runtime module. Architecture and
 API details belong in a module's header comments (and, if a repo adds one,
@@ -43,22 +57,24 @@ fails. The shell creates one pool and exposes it through
 ### Runtime shell
 
 `zcsr_runtime_shell_run(modules, count, argc, argv)` and
-`zcsr_window_game_run(...)` are the same host contract: one window, one loop.
-`argv` is forwarded so `autoquit` can run headless self-tests. A module supplies
-optional `init`, `frame`, `shutdown`, `key`, `pointer`, `text` and
-`close_request` callbacks. The shell owns the shared `zcsr_surface` and renderer;
-read them with `zcsr_runtime_shell_surface()` only while the shell is running.
+`zcsr_runtime_window_run(...)` are the same host contract: one window, one loop.
+`zcsr_window_game_run(...)` is the legacy compatibility name. `argv` is forwarded
+so `autoquit` can run headless self-tests. A module supplies optional `init`,
+`frame`, `shutdown`, `key`, `pointer`, `text` and `close_request` callbacks. The
+shell owns the shared `zcsr_surface` and renderer; read them with
+`zcsr_runtime_shell_surface()` only while the shell is running.
 `close_request` is consulted before the shell accepts an OS close request; false
 keeps the window open. `zcsr_runtime_shell_inject_key()` queues a key into the
 shell's single input ring for tests; platform backends must use the normal pump.
 `zcsr_runtime_shell_request_exit()` asks the shell to exit after the module has
 handled its own unsaved-work confirmation.
 
-`ZCSR_RUNTIME_WITH_SETTINGS_PAGE=ON` adds the UIM Page Manager settings overlay
-and its read-only test hooks. The default is `OFF`, so the default build has no
-page-manager dependency and no SETTINGS entry. When the option is ON, the top
-level forces `ZCSR_UIM_WITH_PAGE_MANAGER=ON` so a reused CMake cache cannot
-silently omit `zcsr_ui_page_manager`.
+`ZCSR_RUNTIME_WITH_SETTINGS_PAGE=ON` adds the independent setting page container
+overlay and its read-only test hooks. The default is `OFF`, so the default build
+has no setting-page dependency and no SETTINGS entry. When the option is ON, the
+top level forces `ZCSR_UIM_WITH_PAGE_MANAGER=ON` so a reused CMake cache cannot
+silently omit the legacy `zcsr_ui_page_manager` target. The canonical target
+name is `zcsr_page_manager`; the old name is a compatibility name.
 
 ## Build
 
@@ -85,8 +101,9 @@ Options:
 
 - `ZCSR_RUNTIME_BUILD_PLAYER=ON` (default): builds `zcsr_player` and its autoquit
   test. Requires UIM.
-- `ZCSR_RUNTIME_WITH_SETTINGS_PAGE=OFF` (default): no page manager; ON adds the
-  settings overlay and forces the UIM page-manager target ON.
+- `ZCSR_RUNTIME_WITH_SETTINGS_PAGE=OFF` (default): no setting page container;
+  `ON` adds the settings overlay and forces the legacy UIM
+  `zcsr_ui_page_manager` target on. Canonical target alias: `zcsr_page_manager`.
 - `ZCSR_ENGINE_DIR`, `ZCSR_UIM_DIR`: source directories for the two dependencies.
 
 ## Release 1.0 test boundary
@@ -100,10 +117,15 @@ Options:
 
 ## Known 1.0 boundaries
 
-- The `text` callback remains in the module descriptor for editor chrome, but
-  the 1.0 shell does not call `zcsr_input_ext_take_text()`. Text/IME input is
-  deferred until the engine exposes and tests that contract; player modules
-  should not depend on `text` firing in 1.0.
-- The optional settings page is UIM-owned. Runtime does not own page content.
-- Desktop integration in 1.0 is Windows-first; macOS is not part of this
-  release candidate.
+- The `text` callback is part of the module descriptor. The 1.0 shell drains
+  `zcsr_input_ext_take_text()` and dispatches it to the active module; text/IME
+  behavior still depends on the engine text backend and must be tested per
+  platform before a product relies on it.
+- The optional setting page is owned by the independent setting page container.
+  Runtime owns the host window and loop, not setting page content.
+- Desktop integration covers Windows, Linux and macOS. Linux builds the player
+  at `${CMAKE_BINARY_DIR}/zcsr_player` for single-config generators and
+  `${CMAKE_BINARY_DIR}/Debug/zcsr_player` for multi-config generators; Run uses
+  the same CMake build that produced the editor and launches that executable.
+  macOS uses the Cocoa host backend; it still needs real-Mac build/startup
+  smoke before it is treated as release-verified.

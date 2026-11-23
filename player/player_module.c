@@ -12,6 +12,10 @@
 #include "zcsr/image.h"
 #include "zcsr/input_ext.h"
 #include "zcsr/platform.h"
+#include "zcsr/scene.h"
+#include "zcsr/scene_io.h"
+#include "zcsr/scene_render.h"
+#include "zcsr/scene_submit.h"
 #include "zcsr/window_event.h"
 
 #include <math.h>
@@ -288,6 +292,9 @@ typedef struct PlayerModule {
     UIM_ComponentManager *manager;
     uim_PageId page;
     uim_NodeId root;
+    zcsr_scene *scene;
+    zcsr_scene_quad_instance *scene_scratch;
+    size_t scene_scratch_capacity;
     char project_path[UIR_PROJECT_PATH_CAP];
     char project_root[UIR_PROJECT_PATH_CAP];
     char project_name[UIR_PROJECT_NAME_CAP];
@@ -296,6 +303,46 @@ typedef struct PlayerModule {
     int cw;
     int ch;
 } PlayerModule;
+
+static bool player_load_scene(PlayerModule *m) {
+    unsigned char *scene_bytes = NULL;
+    size_t scene_size = 0u;
+    zcsr_scene_io_result rc;
+    uim_Result urc;
+
+    if (!m || !m->project_path[0]) return true;
+    urc = uir_project_read_scene_bytes(m->project_path, &scene_bytes, &scene_size);
+    if (urc == uim_ERR_NOT_FOUND) return true; /* legacy project: no scene slot */
+    if (urc != uim_OK || scene_size == 0u) {
+        free(scene_bytes);
+        fprintf(stderr, "player: scene section read failed rc=%d\n", (int)urc);
+        return false;
+    }
+    m->scene = (zcsr_scene *)calloc(1u, sizeof(*m->scene));
+    if (!m->scene) {
+        free(scene_bytes);
+        return false;
+    }
+    zcsr_scene_init(m->scene);
+    rc = zcsr_scene_io_deserialize((const char *)scene_bytes, scene_size, m->scene);
+    free(scene_bytes);
+    if (rc != ZCSR_SCENE_IO_OK) {
+        fprintf(stderr, "player: scene decode failed rc=%s\n",
+                zcsr_scene_io_result_name(rc));
+        free(m->scene);
+        m->scene = NULL;
+        return false;
+    }
+    m->scene_scratch_capacity = ZCSR_SCENE_MAX_ENTITIES;
+    m->scene_scratch = (zcsr_scene_quad_instance *)calloc(
+        m->scene_scratch_capacity, sizeof(*m->scene_scratch));
+    if (!m->scene_scratch) {
+        free(m->scene);
+        m->scene = NULL;
+        return false;
+    }
+    return true;
+}
 
 static bool player_module_init(zcsr_gl_renderer *r, int cw, int ch, void *user) {
     PlayerModule *m = (PlayerModule *)user;
@@ -307,6 +354,11 @@ static bool player_module_init(zcsr_gl_renderer *r, int cw, int ch, void *user) 
     if (rc != uim_OK || !m->manager) {
         fprintf(stderr, "player: project load failed rc=%d path=%s\n",
                 (int)rc, m->project_path);
+        return false;
+    }
+    if (!player_load_scene(m)) {
+        uim_component_manager_destroy(m->manager);
+        m->manager = NULL;
         return false;
     }
     /* Product layout pass: resolve authored anchors against the root viewport
@@ -342,6 +394,13 @@ static void player_module_frame(zcsr_gl_renderer *r, int cw, int ch, void *user)
     dt = (double)(now - m->last_ns) / 1000000000.0;
     m->last_ns = now;
     uim_runtime_tick(m->manager, m->page, dt);
+    if (m->scene && m->scene->count > 0u && m->scene_scratch) {
+        m->scene->camera.view_w = cw;
+        m->scene->camera.view_h = ch;
+        (void)zcsr_scene_submit(r, m->scene, ZCSR_SCENE_SUBMIT_DISPLAY,
+                                m->scene_scratch, m->scene_scratch_capacity,
+                                NULL);
+    }
     (void)zcsr_page_render(r, m->manager, m->page, 0, 0, cw, ch, m->project_root);
     player_draw_tabs(r, m->manager, m->page, cw);
     {
@@ -389,6 +448,10 @@ static void player_module_shutdown(zcsr_gl_renderer *r, void *user) {
     uim_runtime_end();
     if (m->manager) uim_component_manager_destroy(m->manager);
     m->manager = NULL;
+    free(m->scene);
+    m->scene = NULL;
+    free(m->scene_scratch);
+    m->scene_scratch = NULL;
 }
 
 int zcsr_player_main(int argc, char **argv) {
