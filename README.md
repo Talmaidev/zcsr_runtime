@@ -1,5 +1,7 @@
 # ZCSR Runtime
 
+Version: 1.0.0. The `main` branch is the canonical history.
+
 Runtime is the **runtime host**: the single OS-window, surface, input-pump and
 main-loop owner for ZCSR products. It links the engine and, when the product
 needs it, UIM. A runtime module does not create a second window, surface,
