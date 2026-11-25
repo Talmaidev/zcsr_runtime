@@ -83,18 +83,18 @@ defaults `ZCSR_ENGINE_DIR` and `ZCSR_UIM_DIR` to sibling checkouts; override the
 for another layout.
 
 ```bat
-cmake -S . -B build -G "Visual Studio 18 2026" -A x64
-cmake --build build --config Release
-ctest --test-dir build -C Release --output-on-failure
+cmake -S . -B ..\zcsr-build\zcsr_runtime\main -G "Visual Studio 18 2026" -A x64
+cmake --build ..\zcsr-build\zcsr_runtime\main --config Release
+ctest --test-dir ..\zcsr-build\zcsr_runtime\main -C Release --output-on-failure
 ```
 
 Settings page build:
 
 ```bat
-cmake -S . -B build_settings -G "Visual Studio 18 2026" -A x64 ^
+cmake -S . -B ..\zcsr-build\zcsr_runtime\settings -G "Visual Studio 18 2026" -A x64 ^
   -DZCSR_RUNTIME_WITH_SETTINGS_PAGE=ON
-cmake --build build_settings --config Release
-ctest --test-dir build_settings -C Release --output-on-failure
+cmake --build ..\zcsr-build\zcsr_runtime\settings --config Release
+ctest --test-dir ..\zcsr-build\zcsr_runtime\settings -C Release --output-on-failure
 ```
 
 Options:
@@ -129,3 +129,7 @@ Options:
   the same CMake build that produced the editor and launches that executable.
   macOS uses the Cocoa host backend; it still needs real-Mac build/startup
   smoke before it is treated as release-verified.
+
+## License
+
+本项目按 GNU Affero General Public License v3.0（AGPL-3.0）授权，完整许可证文本见仓库根目录 `LICENSE`。版权行：Copyright (C) 2026 Talmaidev。

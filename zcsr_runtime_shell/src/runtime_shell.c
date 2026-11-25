@@ -300,6 +300,18 @@ zcsr_surface* zcsr_runtime_shell_surface(void) {
     return w_surface;
 }
 
+/* The one DPI source for the shell: the platform surface (WM_DPICHANGED on
+ * Win32, output scale on Wayland, density on Android), 1.0 at 96 DPI.
+ * Layout (settings page), font pixel height and therefore hit-testing all
+ * derive from this value; there is no hard-coded multiplier any more. */
+static float runtime_dpi_scale(void) {
+    float dpi = w_surface ? zcsr_surface_get_dpi_scale(w_surface) : 0.0f;
+    if (!(dpi > 0.0f)) dpi = 1.0f;
+    if (dpi < 0.5f) dpi = 0.5f;
+    if (dpi > 4.0f) dpi = 4.0f;
+    return dpi;
+}
+
 bool zcsr_runtime_shell_key_down(zcsr_keycode key) {
     if (!w_input) return false;
     return zcsr_input_is_down(w_input, key);
@@ -717,18 +729,21 @@ static void build_setting_tabs(void) {
 
 zcsr_game_settings* zcsr_runtime_shell_settings_create(void* buf, size_t bytes,
                                                int x, int y, int w, int h) {
+    /* 面板尺寸按 96-DPI 设计值给出，这里只把倍率交给页面：文字与行高随
+     * dpi_scale 一起放大，指针坐标本来就在设备像素里，所以命中依旧一致。 */
+    float dpi = runtime_dpi_scale();
+    zcsr_game_settings_config cfg = {
+        .tabs        = w_tabs,
+        .tab_count   = 4,
+        .x           = x,
+        .y           = y,
+        .width       = w,
+        .height      = h,
+        .item_height = (int)(34.0f * dpi + 0.5f),
+        .text_scale  = dpi,
+    };
     build_setting_tabs();
-    return zcsr_game_settings_create(buf, bytes,
-        &(zcsr_game_settings_config){
-            .tabs        = w_tabs,
-            .tab_count   = 4,
-            .x           = x,
-            .y           = y,
-            .width       = w,
-            .height      = h,
-            .item_height = 34,
-            .text_scale  = 1.4f,
-        });
+    return zcsr_game_settings_create(buf, bytes, &cfg);
 }
 #else
 /* No page manager: the shell owns no settings page and exposes no SETTINGS
@@ -832,14 +847,17 @@ int zcsr_runtime_shell_run(const zcsr_runtime_shell_module* modules, int module_
         /* TTF 字节(约1MB) + zcsr_font 副本(约1.1MB) + atlas(4.26MB)，6MB 不够 */
         static unsigned char w_font_buf[16u * 1024u * 1024u];
         const char* pxs = getenv("ZCSR_FONT_PX");
-        int px = 16;
+        float dpi = runtime_dpi_scale();
+        int px = (int)(16.0f * dpi + 0.5f);   /* 96-DPI design size, scaled once */
+        if (px < 8) px = 8;
         if (pxs && pxs[0]) {
             char* end;
             long v = strtol(pxs, &end, 10);
             if (end && *end == '\0' && v > 0 && v <= 512) px = (int)v;
         }
         if (zcsr_gl_font_default(w_renderer, px, w_font_buf, sizeof(w_font_buf))) {
-            zcsr_log_write(ZCSR_LOG_INFO, "shell", "[font] default TTF bound @ %dpx\n", px);
+            zcsr_log_write(ZCSR_LOG_INFO, "shell", "[font] default TTF bound @ %dpx (dpi %.2f)\n",
+                           px, dpi);
         } else {
             zcsr_log_write(ZCSR_LOG_INFO, "shell", "[font] no system TTF found, using builtin 8x8\n");
         }

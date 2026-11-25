@@ -11,3 +11,11 @@ scope
 - player
 - settings
 - tests
+
+2026-11-24
+- DPI single source: settings text_scale, item_height and the default font
+  pixel size now derive from zcsr_surface_get_dpi_scale(); the hard-coded
+  text_scale 1.4 and the 16 px font constant are gone (96 DPI = 1.0)
+- pointer positions stay in device pixels, the same space the scaled layout
+  uses, so hit testing is not double-scaled
+- CTest 17/17 Release (Windows, VS 18 2026)
